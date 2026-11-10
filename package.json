@@ -1,0 +1,10 @@
+{
+  "name": "aws-cloudtrail-log-data",
+  "version": "1.0.0",
+  "description": "AWS CloudTrail Log Analyzer and Admin Dashboard",
+  "scripts": {
+    "start": "npm start --prefix cloudtrail-dashboard",
+    "dev": "npm run dev --prefix cloudtrail-dashboard",
+    "build": "npm run build --prefix cloudtrail-dashboard"
+  }
+}
