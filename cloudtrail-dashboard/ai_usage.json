@@ -1,0 +1,91 @@
+{
+  "logs": [
+    {
+      "id": "tx_1794460326641_6uvqh",
+      "timestamp": "2026-11-12T05:12:06.641Z",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "action": "event_analysis",
+      "eventName": "Decrypt",
+      "errorCode": "N/A",
+      "promptTokens": 874,
+      "completionTokens": 609,
+      "totalTokens": 1483,
+      "costUSD": 0.0001241,
+      "latencyMs": 2689,
+      "success": true,
+      "errorMsg": null
+    },
+    {
+      "id": "tx_1794460280731_8hlxh",
+      "timestamp": "2026-11-12T05:11:20.731Z",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "action": "event_analysis",
+      "eventName": "Decrypt",
+      "errorCode": "N/A",
+      "promptTokens": 0,
+      "completionTokens": 0,
+      "totalTokens": 0,
+      "costUSD": 0,
+      "latencyMs": 0,
+      "success": false,
+      "errorMsg": "Gemini API Key is not configured. Please add GEMINI_API_KEY to your .env file or enter it in AI Settings."
+    },
+    {
+      "id": "tx_1794460067532_003zi",
+      "timestamp": "2026-11-12T05:07:47.532Z",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "action": "event_analysis",
+      "eventName": "Decrypt",
+      "errorCode": "N/A",
+      "promptTokens": 0,
+      "completionTokens": 0,
+      "totalTokens": 0,
+      "costUSD": 0,
+      "latencyMs": 0,
+      "success": false,
+      "errorMsg": "Gemini API Key is not configured. Please add GEMINI_API_KEY to your .env file or enter it in AI Settings."
+    },
+    {
+      "id": "tx_1794330534732_apsaw",
+      "timestamp": "2026-11-10T17:08:54.732Z",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "action": "event_analysis",
+      "eventName": "GetAccountPublicAccessBlock",
+      "errorCode": "NoSuchPublicAccessBlockConfiguration",
+      "promptTokens": 0,
+      "completionTokens": 0,
+      "totalTokens": 0,
+      "costUSD": 0,
+      "latencyMs": 0,
+      "success": false,
+      "errorMsg": "Gemini API Key is not configured. Please add GEMINI_API_KEY to your .env file or enter it in AI Settings."
+    },
+    {
+      "id": "tx_1794330528828_h98yp",
+      "timestamp": "2026-11-10T17:08:48.828Z",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "action": "executive_summary",
+      "eventName": "Batch_Errors",
+      "errorCode": "Multiple",
+      "promptTokens": 0,
+      "completionTokens": 0,
+      "totalTokens": 0,
+      "costUSD": 0,
+      "latencyMs": 0,
+      "success": false,
+      "errorMsg": "Gemini API Key is not configured. Please add GEMINI_API_KEY to your .env file or enter it in AI Settings."
+    }
+  ],
+  "summary": {
+    "totalAnalyses": 1,
+    "totalTokens": 1483,
+    "promptTokens": 874,
+    "completionTokens": 609,
+    "totalCostUSD": 0.0001241
+  }
+}
