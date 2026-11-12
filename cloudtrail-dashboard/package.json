@@ -1,7 +1,7 @@
 {
   "name": "cloudtrail-dashboard",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "start": "node server.js",
@@ -11,7 +11,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1165.0",
     "@aws-sdk/client-s3": "^3.1162.0",
+    "@google/genai": "^3.0.0",
     "@tailwindcss/vite": "^4.3.4",
     "compression": "^1.8.2",
     "cors": "^2.8.6",

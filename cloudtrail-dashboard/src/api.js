@@ -157,5 +157,58 @@ export const api = {
       }
     });
     return `${BASE_URL}/export?${query.toString()}&token=${token || ''}`;
+  },
+
+  // AI Error Analysis & Cost Intelligence API
+  getAIModels: async () => {
+    return fetchWithAuth('/ai/models');
+  },
+
+  getAIConfig: async () => {
+    return fetchWithAuth('/ai/config');
+  },
+
+  updateAIConfig: async (config) => {
+    return fetchWithAuth('/ai/config', {
+      method: 'POST',
+      body: JSON.stringify(config)
+    });
+  },
+
+  analyzeEvent: async ({ eventId, event, provider, modelId }) => {
+    return fetchWithAuth('/ai/analyze-event', {
+      method: 'POST',
+      body: JSON.stringify({ eventId, event, provider, modelId })
+    });
+  },
+
+  summarizeErrors: async ({ provider, modelId } = {}) => {
+    return fetchWithAuth('/ai/summarize-errors', {
+      method: 'POST',
+      body: JSON.stringify({ provider, modelId })
+    });
+  },
+
+  getAIUsage: async () => {
+    return fetchWithAuth('/ai/usage');
+  },
+
+  resetAIUsage: async () => {
+    return fetchWithAuth('/ai/usage', {
+      method: 'DELETE'
+    });
+  },
+
+  testAIConnection: async (payload = {}) => {
+    return fetchWithAuth('/ai/test-connection', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  deleteAIKey: async (provider) => {
+    return fetchWithAuth(`/ai/key/${encodeURIComponent(provider)}`, {
+      method: 'DELETE'
+    });
   }
 };

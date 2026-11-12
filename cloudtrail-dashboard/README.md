@@ -1,13 +1,13 @@
 # 🛡️ AWS CloudTrail Dashboard & Log Analyzer
 
-[![Version](https://img.shields.io/badge/Version-v1.0.0-amber.svg?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/Version-v1.1.0-amber.svg?style=flat-square)](package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Thanvir_Assif-orange.svg?style=flat-square)](https://thanvirassif.com)
 [![React](https://img.shields.io/badge/Frontend-React_19_%2B_Vite_8-61DAFB.svg?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Backend-Node.js_%2B_Express_5-339933.svg?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind_CSS_v4-38B2AC.svg?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
-A fast, lightweight, open-source full-stack application designed to analyze, monitor, search, and inspect AWS CloudTrail logs ingested from local folders or directly from **Amazon S3 buckets**.
+A fast, lightweight, open-source full-stack application designed to analyze, monitor, search, and inspect AWS CloudTrail logs ingested from local folders or directly from **Amazon S3 buckets**, featuring **AI-powered error diagnostics** and a dedicated **token usage & cost tracking dashboard**.
 
 ---
 
@@ -18,39 +18,49 @@ A fast, lightweight, open-source full-stack application designed to analyze, mon
 - **Default Admin Username**: `admin`
 - **Default Admin Password**: `admin123` *(with 1-click Auto-fill)*
 - **Official Creator Website**: [https://thanvirassif.com](https://thanvirassif.com)
-- **Current App Version**: `v1.0.0`
+- **Current App Version**: `v1.1.0`
 
 ---
 
 ## ☁️ Key Features
 
-### 1. Multi-Location Ingestion (Local + AWS S3)
+### 1. 🤖 AI-Powered Error Root-Cause Diagnostics
+- **Dual AI Providers**: Support for **Google Gemini API** (`@google/genai` with `gemini-3.8-flash` & `gemini-3.5-flash-lite`) and **AWS Bedrock API** (`@aws-sdk/client-bedrock-runtime` with `Claude 3.5 Sonnet` & `Amazon Nova Micro`).
+- **Deep Failure Analysis**: Plain-English root cause explanation, missing IAM action identification, copy-paste ready least-privilege IAM policy JSON, and AWS CLI verification commands.
+- **Security Threat Evaluation**: Automatic risk severity classification (`Low`, `Medium`, `High`, `Critical`).
+
+### 2. 📊 AI Usage, Token Credits & Cost Intelligence Dashboard
+- **Real-Time Spend Tracking**: Cumulative spend in USD ($), prompt tokens, and completion tokens.
+- **Dynamic Model Switcher**: Compare rate cards per 1M tokens side-by-side and change active models on the fly.
+- **Audit Activity Trail**: Detailed log of all diagnostic executions with token counts, latency, and costs.
+
+### 3. Multi-Location Ingestion (Local + AWS S3)
 - Connect multiple local filesystem directories (`../AWSLogs`, `./AWSLogs`, custom folders) and AWS S3 buckets (`s3://bucket-name/prefix`).
 - Automatic streaming `.json.gz` extraction and in-memory indexing using Node.js streaming `zlib` and `@aws-sdk/client-s3`.
 - In-app animated progress banner and notification toast for background S3 downloads.
 - Persistent location configuration in `config.json`.
 
-### 2. Origin Segregation
+### 4. Origin Segregation
 - Filter events and dashboard KPIs by origin: **All Origins**, **Local Files Only**, or **AWS S3 Cloud Only**.
 - Distinct visual badges on table rows and event inspector indicating record source.
 
-### 3. Analytics & Threat Detection
+### 5. Analytics & Threat Detection
 - Executive KPIs: Total Events, Failed Requests, Error Rates, Service Counts, IAM Identities, Active Regions, and Read/Write ratios.
 - Privileged root account activity detection with 1-click filter.
 - Top error rankings (`AccessDenied`, `Client.UnauthorizedOperation`, etc.).
 - Interactive daily activity timeline chart and horizontal breakdown bars.
 
-### 4. Searchable & Sortable Event Explorer
+### 6. Searchable & Sortable Event Explorer
 - Global text search across Event Name, Service, Principal, IP, Error Code, and IDs.
 - Multi-dimensional filters (Service, Region, Principal, Status, Read/Write, Date range).
 - Sortable columns, page navigation (10/25/50/100 records per page).
 - 1-click **Export to CSV** and **Export to JSON**.
 
-### 5. Deep Event Inspector
-- 4-tab modal: Overview & Identity, Request Parameters (JSON viewer), Response Elements (JSON viewer), and Full Raw CloudTrail JSON (with copy and download).
+### 7. Deep Event Inspector
+- 5-tab modal: Overview & Identity, Request Parameters (JSON viewer), Response Elements (JSON viewer), Full Raw CloudTrail JSON, and **AI Root-Cause Diagnosis**.
 
-### 6. App Footer & Contributor Hub
-- Displays current app version (`v1.0.0`).
+### 8. App Footer & Contributor Hub
+- Displays current app version (`v1.1.0`).
 - Open-source attribution to [Thanvir Assif](https://thanvirassif.com).
 - Open invitation for contributors to fix bugs, propose features, and submit Pull Requests.
 
@@ -81,17 +91,20 @@ npm run preview
 
 ```
 cloudtrail-dashboard/
-├── server.js                    # Express 5 backend, zlib streaming parser, S3 fetcher, in-memory index & auth
-├── config.json                  # Auto-saved user locations configuration
-├── package.json                 # Dependencies & scripts (version 1.0.0)
+├── server.js                    # Express 5 backend, zlib streaming parser, S3 fetcher, in-memory index, auth & AI APIs
+├── aiService.js                 # Gemini & Bedrock AI diagnostic engine & usage recorder
+├── aiPricing.js                 # AI models catalog & token cost calculator
+├── ai_usage.json                # Persistent transaction log of AI analyses & costs
+├── config.json                  # Auto-saved user locations & AI settings
+├── package.json                 # Dependencies & scripts (version 1.1.0)
 ├── vite.config.js               # Vite 8 config with Tailwind CSS v4 & proxy to port 5000
 ├── index.html                   # HTML template entrypoint
 ├── dist/                        # Production build artifacts
 ├── public/                      # Static brand assets
 └── src/
     ├── api.js                   # API client with JWT/Bearer handling & REST endpoints
-    ├── version.js               # Centralized version (1.0.0), author info & contributor message
-    ├── App.jsx                  # Main application container & view manager
+    ├── version.js               # Centralized version (1.1.0), author info & contributor message
+    ├── App.jsx                  # Main application container & view manager (3-tab layout)
     ├── App.css                  # Custom animations & scrollbars
     ├── index.css                # Tailwind CSS v4 styling rules
     ├── main.jsx                 # React root mount
@@ -102,7 +115,10 @@ cloudtrail-dashboard/
         ├── Navbar.jsx           # Top header navigation, stats summary & rescan trigger
         ├── Dashboard.jsx        # Analytics charts, metrics, KPIs & security filters
         ├── EventsTable.jsx      # Filterable event table with CSV & JSON exports
-        ├── EventDetailModal.jsx # 4-tab event inspector modal with formatted JSON
+        ├── EventDetailModal.jsx # 5-tab event inspector modal with AI Root-Cause Diagnosis
+        ├── AIUsageDashboard.jsx # AI usage, token credits, cost & model selector view
+        ├── AISettingsModal.jsx  # AI provider (Gemini / Bedrock) & API keys configuration
+        ├── AIExecutiveSummaryModal.jsx # CISO-level executive error summary modal
         ├── LocationsModal.jsx   # Multi-location management (Local & AWS S3)
         ├── NotificationBanner.jsx # Live background S3 fetch indicator & notification
         ├── HelpGuideModal.jsx   # Interactive user manual & instructions

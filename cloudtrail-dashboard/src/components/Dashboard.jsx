@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Activity, 
   AlertTriangle, 
@@ -19,10 +19,13 @@ import {
   FolderSearch,
   FolderX,
   FolderCheck,
-  Cloud
+  Cloud,
+  Sparkles
 } from 'lucide-react';
+import AIExecutiveSummaryModal from './AIExecutiveSummaryModal';
 
 export default function Dashboard({ stats, onNavigateToTable, onOpenLocationsModal }) {
+  const [showAiSummaryModal, setShowAiSummaryModal] = useState(false);
   if (!stats) {
     return (
       <div className="flex items-center justify-center min-h-[500px]">
@@ -320,12 +323,21 @@ export default function Dashboard({ stats, onNavigateToTable, onOpenLocationsMod
                   <p className="text-xs text-slate-400 mt-1">
                     Top error codes: {topErrorCodes.slice(0, 3).map(e => e.code).join(', ') || 'N/A'}.
                   </p>
-                  <button
-                    onClick={() => onNavigateToTable({ status: 'error' })}
-                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  >
-                    Inspect Failed Requests <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="mt-3 flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => onNavigateToTable({ status: 'error' })}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Inspect Failed Requests <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setShowAiSummaryModal(true)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-950 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-md shadow-amber-500/10"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>AI Executive Error Summary</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -484,6 +496,12 @@ export default function Dashboard({ stats, onNavigateToTable, onOpenLocationsMod
           </div>
         </div>
       </div>
+
+      {/* AI Executive Error Summary Modal */}
+      <AIExecutiveSummaryModal
+        isOpen={showAiSummaryModal}
+        onClose={() => setShowAiSummaryModal(false)}
+      />
     </div>
   );
 }

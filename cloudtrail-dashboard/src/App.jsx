@@ -9,11 +9,14 @@ import HelpGuideModal from './components/HelpGuideModal';
 import LocationsModal from './components/LocationsModal';
 import NotificationBanner from './components/NotificationBanner';
 import Footer from './components/Footer';
+import AIUsageDashboard from './components/AIUsageDashboard';
+import AISettingsModal from './components/AISettingsModal';
+import ErrorBoundary from './components/ErrorBoundary';
 import { api } from './api';
 
 function MainLayout() {
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'table'
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'table' | 'aiUsage'
   const [stats, setStats] = useState(null);
   const [sources, setSources] = useState([]);
   const [activeFetchState, setActiveFetchState] = useState(null);
@@ -22,6 +25,7 @@ function MainLayout() {
   const [scanning, setScanning] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showLocationsModal, setShowLocationsModal] = useState(false);
+  const [showAISettingsModal, setShowAISettingsModal] = useState(false);
 
   const fetchIntervalRef = useRef(null);
 
@@ -147,6 +151,7 @@ function MainLayout() {
         onOpenHelp={() => setShowHelp(true)}
         sources={sources}
         onOpenLocationsModal={() => setShowLocationsModal(true)}
+        onOpenAISettings={() => setShowAISettingsModal(true)}
         stats={stats}
       />
 
@@ -159,20 +164,29 @@ function MainLayout() {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12">
-        {activeTab === 'dashboard' ? (
-          <Dashboard 
-            stats={stats} 
-            onNavigateToTable={handleNavigateToTable} 
-            onOpenLocationsModal={() => setShowLocationsModal(true)}
-          />
-        ) : (
-          <EventsTable 
-            initialFilters={tableFilters}
-            onSelectEvent={(id) => setSelectedEventId(id)}
-            onOpenLocationsModal={() => setShowLocationsModal(true)}
-            sources={sources}
-          />
-        )}
+        <ErrorBoundary key={activeTab} onGoHome={() => setActiveTab('dashboard')}>
+          {activeTab === 'dashboard' ? (
+            <Dashboard 
+              stats={stats} 
+              onNavigateToTable={handleNavigateToTable} 
+              onOpenLocationsModal={() => setShowLocationsModal(true)}
+            />
+          ) : activeTab === 'table' ? (
+            <EventsTable 
+              initialFilters={tableFilters}
+              onSelectEvent={(id) => setSelectedEventId(id)}
+              onOpenLocationsModal={() => setShowLocationsModal(true)}
+              sources={sources}
+            />
+          ) : (
+            <AIUsageDashboard 
+              onOpenSettings={() => setShowAISettingsModal(true)}
+              onNavigateToEvent={(id) => {
+                setSelectedEventId(id);
+              }}
+            />
+          )}
+        </ErrorBoundary>
       </main>
 
       {/* App Footer */}
@@ -185,6 +199,12 @@ function MainLayout() {
           onClose={() => setSelectedEventId(null)} 
         />
       )}
+
+      {/* AI Settings & Credentials Modal */}
+      <AISettingsModal
+        isOpen={showAISettingsModal}
+        onClose={() => setShowAISettingsModal(false)}
+      />
 
       {/* Multi-Location Management Modal (Local & S3) */}
       <LocationsModal

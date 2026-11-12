@@ -16,15 +16,27 @@ import {
   Layers, 
   User, 
   Terminal,
-  ExternalLink
+  ExternalLink,
+  Sparkles,
+  Bot,
+  Cpu,
+  Code2,
+  RefreshCw,
+  Coins
 } from 'lucide-react';
 
 export default function EventDetailModal({ eventId, onClose }) {
   const [eventData, setEventData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'requestParams', 'responseElements', 'rawJson'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'requestParams', 'responseElements', 'rawJson', 'aiAnalysis'
   const [copiedKey, setCopiedKey] = useState(null);
+
+  // AI Diagnosis state
+  const [aiDiagnosis, setAiDiagnosis] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
+  const [aiProvider, setAiProvider] = useState('gemini'); // 'gemini' | 'bedrock'
 
   useEffect(() => {
     if (!eventId) return;
@@ -56,6 +68,25 @@ export default function EventDetailModal({ eventId, onClose }) {
     a.download = `cloudtrail_${eventData.eventName || 'event'}_${eventData.eventID || Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleRunAiDiagnosis = async (providerOverride) => {
+    if (!eventData) return;
+    const provider = providerOverride || aiProvider;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await api.analyzeEvent({
+        eventId: eventData._id || eventData.eventID,
+        event: eventData,
+        provider
+      });
+      setAiDiagnosis(res);
+    } catch (err) {
+      setAiError(err.message || 'AI diagnosis failed. Please check credentials or API key in AI Settings.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   if (!eventId) return null;
@@ -176,6 +207,23 @@ export default function EventDetailModal({ eventId, onClose }) {
           >
             Raw CloudTrail JSON
           </button>
+          <button
+            onClick={() => {
+              setActiveTab('aiAnalysis');
+              if (!aiDiagnosis && !aiLoading) handleRunAiDiagnosis();
+            }}
+            className={`pb-2.5 px-3 font-medium border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'aiAnalysis'
+                ? 'border-amber-400 text-amber-400 font-semibold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>AI Error Diagnosis</span>
+            {eventData?._hasError && (
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" title="Failed request - AI analysis available" />
+            )}
+          </button>
         </div>
 
         {/* Modal Body */}
@@ -213,6 +261,19 @@ export default function EventDetailModal({ eventId, onClose }) {
                             <span className="text-slate-200 font-mono">{eventData.errorMessage}</span>
                           </div>
                         )}
+                      </div>
+                      <div className="mt-3 pt-2.5 border-t border-rose-500/20 flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400">Understand why this failed and get copy-paste IAM remediation:</span>
+                        <button
+                          onClick={() => {
+                            setActiveTab('aiAnalysis');
+                            if (!aiDiagnosis && !aiLoading) handleRunAiDiagnosis();
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-amber-500/20"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>AI Error Diagnosis</span>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -438,6 +499,255 @@ export default function EventDetailModal({ eventId, onClose }) {
                   <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 font-mono overflow-x-auto max-h-[500px]">
                     {JSON.stringify(eventData, null, 2)}
                   </pre>
+                </div>
+              )}
+
+              {/* TAB 5: AI ERROR DIAGNOSIS & REMEDIATION */}
+              {activeTab === 'aiAnalysis' && (
+                <div className="space-y-4">
+                  {/* Header / Provider Toolbar */}
+                  <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500/20 to-orange-500/30 border border-amber-500/40 flex items-center justify-center shrink-0">
+                        <Sparkles className="w-4 h-4 text-amber-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                          AI Root-Cause Diagnosis & Fix
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-mono">
+                            Intelligence
+                          </span>
+                        </h4>
+                        <p className="text-xs text-slate-400">
+                          Automated security analysis explaining why this request failed and how to remediate it
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Provider Selector & Action Button */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
+                        <button
+                          onClick={() => {
+                            setAiProvider('gemini');
+                            handleRunAiDiagnosis('gemini');
+                          }}
+                          className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                            aiProvider === 'gemini' 
+                              ? 'bg-amber-500 text-slate-950 font-semibold shadow-sm' 
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Google Gemini
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAiProvider('bedrock');
+                            handleRunAiDiagnosis('bedrock');
+                          }}
+                          className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                            aiProvider === 'bedrock' 
+                              ? 'bg-amber-500 text-slate-950 font-semibold shadow-sm' 
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          AWS Bedrock
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => handleRunAiDiagnosis()}
+                        disabled={aiLoading}
+                        className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-semibold text-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-md shadow-amber-500/10"
+                      >
+                        {aiLoading ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                            <span>Analyzing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>{aiDiagnosis ? 'Re-Analyze' : 'Analyze Now'}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Non-Error State Note */}
+                  {!eventData._hasError && !aiDiagnosis && (
+                    <div className="p-8 rounded-xl bg-slate-950/40 border border-slate-800 text-center space-y-2">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
+                      <h5 className="text-sm font-semibold text-white">This Request Succeeded</h5>
+                      <p className="text-xs text-slate-400 max-w-md mx-auto">
+                        No error codes or authorization failures were recorded for this event. You can still run the AI analysis to inspect permission requirements and security posture.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Error Banner if API Fails */}
+                  {aiError && (
+                    <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3 text-rose-300 text-xs">
+                      <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-semibold">{aiError}</p>
+                        <p className="text-slate-400">
+                          Make sure your Gemini API key (via <code className="text-amber-300">GEMINI_API_KEY</code> or AI Settings) or AWS Bedrock credentials are properly configured.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Loading State Skeleton */}
+                  {aiLoading && (
+                    <div className="p-8 rounded-xl bg-slate-950/60 border border-slate-800 flex flex-col items-center justify-center gap-3">
+                      <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs text-slate-300 font-medium">
+                        Consulting {aiProvider === 'gemini' ? 'Google Gemini' : 'AWS Bedrock'} security engine...
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Analyzing error codes, caller IAM identity, and synthesizing least-privilege remediation
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Rendered Diagnosis Results */}
+                  {aiDiagnosis?.diagnosis && !aiLoading && (
+                    <div className="space-y-4">
+                      {/* Token, Cost & Latency Metadata Bar */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-slate-300">{aiDiagnosis.modelMeta?.name || aiDiagnosis.model}</span>
+                          <span>•</span>
+                          <span>{aiDiagnosis.usage?.totalTokens || 0} tokens ({aiDiagnosis.usage?.promptTokens || 0} in / {aiDiagnosis.usage?.completionTokens || 0} out)</span>
+                          <span>•</span>
+                          <span className="text-amber-400 font-mono font-medium">${aiDiagnosis.usage?.costUSD?.toFixed(6) || '0.000000'} USD</span>
+                          {aiDiagnosis.cached && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px]">
+                              Cached ($0.00)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-slate-500">
+                          <Clock className="w-3 h-3" />
+                          <span>{aiDiagnosis.usage?.latencyMs || 0}ms</span>
+                        </div>
+                      </div>
+
+                      {/* 1. Root Cause Card */}
+                      <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Bot className="w-3.5 h-3.5" />
+                            <span>Why This Failed (Root Cause)</span>
+                          </h5>
+                          {aiDiagnosis.diagnosis.securityRisk && (
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border ${
+                              aiDiagnosis.diagnosis.securityRisk.level === 'Critical' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
+                              aiDiagnosis.diagnosis.securityRisk.level === 'High' ? 'bg-orange-500/20 text-orange-300 border-orange-500/40' :
+                              aiDiagnosis.diagnosis.securityRisk.level === 'Medium' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                              'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                            }`}>
+                              Risk: {aiDiagnosis.diagnosis.securityRisk.level}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-200 leading-relaxed font-normal">
+                          {aiDiagnosis.diagnosis.rootCause}
+                        </p>
+                        {aiDiagnosis.diagnosis.securityRisk?.reason && (
+                          <p className="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+                            <strong className="text-slate-300">Security Evaluation: </strong>
+                            {aiDiagnosis.diagnosis.securityRisk.reason}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* 2. Action & Resource Context */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs">
+                          <span className="text-slate-400 block mb-1">Failed IAM Action</span>
+                          <code className="text-amber-300 font-mono text-[11px] px-2 py-1 rounded bg-slate-900 border border-slate-800 block truncate">
+                            {aiDiagnosis.diagnosis.failedAction || eventData.eventName}
+                          </code>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs">
+                          <span className="text-slate-400 block mb-1">Target Resource</span>
+                          <code className="text-slate-300 font-mono text-[11px] px-2 py-1 rounded bg-slate-900 border border-slate-800 block truncate" title={aiDiagnosis.diagnosis.resourceAffected}>
+                            {aiDiagnosis.diagnosis.resourceAffected || 'Not specified'}
+                          </code>
+                        </div>
+                      </div>
+
+                      {/* 3. Recommended Remediation & Policy Snippet */}
+                      {aiDiagnosis.diagnosis.remediation && (
+                        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h5 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Recommended Remediation & Policy</span>
+                            </h5>
+                          </div>
+
+                          <p className="text-xs text-slate-300">
+                            {aiDiagnosis.diagnosis.remediation.summary}
+                          </p>
+
+                          {/* Copyable IAM Policy JSON */}
+                          {aiDiagnosis.diagnosis.remediation.policyJson && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="text-slate-400 font-medium">Least-Privilege Policy Statement:</span>
+                                <button
+                                  onClick={() => copyToClipboard(aiDiagnosis.diagnosis.remediation.policyJson, 'remediationPolicy')}
+                                  className="flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 font-medium cursor-pointer"
+                                >
+                                  {copiedKey === 'remediationPolicy' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                  <span>{copiedKey === 'remediationPolicy' ? 'Copied Policy!' : 'Copy Policy JSON'}</span>
+                                </button>
+                              </div>
+                              <pre className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-emerald-300 font-mono overflow-x-auto max-h-48">
+                                {typeof aiDiagnosis.diagnosis.remediation.policyJson === 'object' 
+                                  ? JSON.stringify(aiDiagnosis.diagnosis.remediation.policyJson, null, 2)
+                                  : aiDiagnosis.diagnosis.remediation.policyJson}
+                              </pre>
+                            </div>
+                          )}
+
+                          {/* Copyable AWS CLI Command */}
+                          {aiDiagnosis.diagnosis.remediation.cliCommand && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="text-slate-400 font-medium">AWS CLI Verification Command:</span>
+                                <button
+                                  onClick={() => copyToClipboard(aiDiagnosis.diagnosis.remediation.cliCommand, 'cliCmd')}
+                                  className="flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 font-medium cursor-pointer"
+                                >
+                                  {copiedKey === 'cliCmd' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                  <span>{copiedKey === 'cliCmd' ? 'Copied Command!' : 'Copy CLI Command'}</span>
+                                </button>
+                              </div>
+                              <pre className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-amber-200 font-mono overflow-x-auto">
+                                {aiDiagnosis.diagnosis.remediation.cliCommand}
+                              </pre>
+                            </div>
+                          )}
+
+                          {/* Best Practice Tip */}
+                          {aiDiagnosis.diagnosis.remediation.bestPractice && (
+                            <div className="p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20 text-[11px] text-amber-300/90 flex items-start gap-2">
+                              <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                              <div>
+                                <strong className="text-amber-300">Security Best Practice: </strong>
+                                {aiDiagnosis.diagnosis.remediation.bestPractice}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </>

@@ -16,7 +16,9 @@ import {
   FolderX, 
   AlertTriangle,
   Cloud,
-  HardDrive
+  HardDrive,
+  Sparkles,
+  Bot
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -27,6 +29,7 @@ export default function Navbar({
   onOpenHelp,
   sources = [],
   onOpenLocationsModal,
+  onOpenAISettings,
   stats,
   sourceFilter = 'all',
   onSourceFilterChange
@@ -97,6 +100,17 @@ export default function Navbar({
                 <TableProperties className="w-4 h-4" />
                 <span>Event Explorer Table</span>
               </button>
+              <button
+                onClick={() => setActiveTab('aiUsage')}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                  activeTab === 'aiUsage'
+                    ? 'bg-amber-500 text-slate-950 shadow-sm font-semibold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                }`}
+              >
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>AI Cost & Usage</span>
+              </button>
             </nav>
           </div>
 
@@ -119,6 +133,16 @@ export default function Navbar({
               <span className="text-[10px] text-amber-400 font-mono hidden md:inline">
                 ({totalRecords.toLocaleString()})
               </span>
+            </button>
+
+            {/* AI Settings Button */}
+            <button
+              onClick={onOpenAISettings}
+              title="Configure AI Diagnostics & Engine Models"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border bg-slate-800/90 hover:bg-slate-700/80 text-amber-300 border-amber-500/30 transition-all cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden xl:inline">AI Settings</span>
             </button>
 
             {/* Help / Instructions Button */}
@@ -195,6 +219,17 @@ export default function Navbar({
           >
             <TableProperties className="w-3.5 h-3.5" />
             <span>Event Table</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('aiUsage')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium ${
+              activeTab === 'aiUsage'
+                ? 'bg-amber-500 text-slate-950 font-semibold'
+                : 'bg-slate-800 text-slate-400'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Ops</span>
           </button>
         </div>
       </div>

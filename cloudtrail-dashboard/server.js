@@ -7,6 +7,14 @@ import zlib from 'zlib';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { 
+  analyzeCloudTrailEvent, 
+  summarizeErrorTrends, 
+  getUsageMetrics, 
+  resetUsageMetrics,
+  testAIConnection
+} from './aiService.js';
+import { getModelCatalogList, getModelMetadata } from './aiPricing.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1316,6 +1324,212 @@ app.get('/api/export', authMiddleware, (req, res) => {
   }
 
   res.send(rows.join('\n'));
+});
+
+// ==========================================
+// AI Error Analysis & Cost Intelligence APIs
+// ==========================================
+
+// Get available AI models and rate cards
+app.get('/api/ai/models', authMiddleware, (req, res) => {
+  res.json({
+    models: getModelCatalogList()
+  });
+});
+
+// Get active AI configuration
+app.get('/api/ai/config', authMiddleware, (req, res) => {
+  const savedConfig = readSavedConfig();
+  const aiConf = savedConfig.ai || {};
+
+  const hasGeminiKey = !!(aiConf.geminiApiKey || process.env.GEMINI_API_KEY);
+  const hasAwsCreds = !!(
+    (aiConf.awsAccessKeyId && aiConf.awsSecretAccessKey) ||
+    (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
+  );
+
+  res.json({
+    provider: aiConf.provider || 'gemini',
+    geminiModel: aiConf.geminiModel || 'gemini-3.8-flash',
+    bedrockModel: aiConf.bedrockModel || 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+    bedrockRegion: aiConf.bedrockRegion || process.env.AWS_REGION || 'us-east-1',
+    hasGeminiKey,
+    hasAwsCreds,
+    geminiApiKey: aiConf.geminiApiKey || null,
+    geminiKeySource: aiConf.geminiApiKey ? 'saved_config' : (process.env.GEMINI_API_KEY ? 'env_variable' : null),
+    maskedGeminiKey: aiConf.geminiApiKey 
+      ? `${aiConf.geminiApiKey.substring(0, 6)}...${aiConf.geminiApiKey.substring(aiConf.geminiApiKey.length - 4)}` 
+      : (process.env.GEMINI_API_KEY ? 'Configured via .env' : null),
+    awsAccessKeyId: aiConf.awsAccessKeyId ? `${aiConf.awsAccessKeyId.substring(0, 4)}...${aiConf.awsAccessKeyId.substring(aiConf.awsAccessKeyId.length - 4)}` : null,
+    awsCredsSource: (aiConf.awsAccessKeyId && aiConf.awsSecretAccessKey) ? 'saved_config' : ((process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) ? 'env_variable' : null)
+  });
+});
+
+// Test connection to AI provider
+app.post('/api/ai/test-connection', authMiddleware, async (req, res) => {
+  try {
+    const { provider, geminiApiKey, bedrockRegion, modelId } = req.body;
+    const savedConfig = readSavedConfig();
+    const aiConf = savedConfig.ai || {};
+    const activeProvider = provider || aiConf.provider || 'gemini';
+
+    const testRes = await testAIConnection({
+      provider: activeProvider,
+      apiKey: geminiApiKey || aiConf.geminiApiKey || process.env.GEMINI_API_KEY,
+      modelId: modelId || (activeProvider === 'gemini' ? aiConf.geminiModel : aiConf.bedrockModel),
+      region: bedrockRegion || aiConf.bedrockRegion || process.env.AWS_REGION,
+      credentials: (aiConf.awsAccessKeyId && aiConf.awsSecretAccessKey) ? {
+        accessKeyId: aiConf.awsAccessKeyId,
+        secretAccessKey: aiConf.awsSecretAccessKey
+      } : undefined
+    });
+
+    res.json(testRes);
+  } catch (err) {
+    console.error('[AI Test Connection Error]:', err.message);
+    res.status(400).json({ success: false, error: err.message || 'Connection test failed' });
+  }
+});
+
+// Delete saved credentials for a specific AI provider
+app.delete('/api/ai/key/:provider', authMiddleware, (req, res) => {
+  const { provider } = req.params;
+  const current = readSavedConfig();
+  const existingAi = current.ai || {};
+  if (provider === 'gemini') {
+    delete existingAi.geminiApiKey;
+  } else if (provider === 'bedrock') {
+    delete existingAi.awsAccessKeyId;
+    delete existingAi.awsSecretAccessKey;
+  }
+  saveConfig({ ai: existingAi });
+  res.json({ success: true, message: `${provider} credentials removed successfully.` });
+});
+
+// Update AI configuration
+app.post('/api/ai/config', authMiddleware, (req, res) => {
+  const { provider, geminiModel, bedrockModel, geminiApiKey, bedrockRegion, awsAccessKeyId, awsSecretAccessKey } = req.body;
+  const current = readSavedConfig();
+  const existingAi = current.ai || {};
+
+  const updatedAi = {
+    ...existingAi,
+    provider: provider || existingAi.provider || 'gemini',
+    geminiModel: geminiModel || existingAi.geminiModel || 'gemini-3.8-flash',
+    bedrockModel: bedrockModel || existingAi.bedrockModel || 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+    bedrockRegion: bedrockRegion || existingAi.bedrockRegion || 'us-east-1'
+  };
+
+  if (geminiApiKey !== undefined) {
+    if (geminiApiKey.trim() === '') delete updatedAi.geminiApiKey;
+    else updatedAi.geminiApiKey = geminiApiKey.trim();
+  }
+
+  if (awsAccessKeyId !== undefined) updatedAi.awsAccessKeyId = awsAccessKeyId.trim();
+  if (awsSecretAccessKey !== undefined) updatedAi.awsSecretAccessKey = awsSecretAccessKey.trim();
+
+  saveConfig({ ai: updatedAi });
+  res.json({ success: true, config: updatedAi });
+});
+
+// Analyze a specific failed CloudTrail event record
+app.post('/api/ai/analyze-event', authMiddleware, async (req, res) => {
+  try {
+    const { eventId, event: directEvent, provider, modelId } = req.body;
+    const event = directEvent || (eventId ? recordsIndex.get(eventId) : null);
+    
+    if (!event) {
+      return res.status(404).json({ error: 'CloudTrail event record not found' });
+    }
+
+    const savedConfig = readSavedConfig();
+    const aiConf = savedConfig.ai || {};
+    const activeProvider = provider || aiConf.provider || 'gemini';
+    const activeModel = modelId || (activeProvider === 'gemini' 
+      ? (aiConf.geminiModel || 'gemini-3.8-flash') 
+      : (aiConf.bedrockModel || 'anthropic.claude-3-5-sonnet-20241022-v2:0'));
+
+    const diagnosis = await analyzeCloudTrailEvent({
+      event,
+      provider: activeProvider,
+      modelId: activeModel,
+      config: {
+        geminiApiKey: aiConf.geminiApiKey || process.env.GEMINI_API_KEY,
+        bedrockRegion: aiConf.bedrockRegion || process.env.AWS_REGION || 'us-east-1',
+        awsCredentials: (aiConf.awsAccessKeyId && aiConf.awsSecretAccessKey) ? {
+          accessKeyId: aiConf.awsAccessKeyId,
+          secretAccessKey: aiConf.awsSecretAccessKey
+        } : undefined
+      }
+    });
+
+    res.json(diagnosis);
+  } catch (err) {
+    console.error('[AI Analysis Error]:', err.message);
+    res.status(500).json({ error: err.message || 'AI root cause diagnosis failed' });
+  }
+});
+
+// Generate executive error summary across all ingested failures
+app.post('/api/ai/summarize-errors', authMiddleware, async (req, res) => {
+  try {
+    const { provider, modelId } = req.body;
+    const savedConfig = readSavedConfig();
+    const aiConf = savedConfig.ai || {};
+    const activeProvider = provider || aiConf.provider || 'gemini';
+    const activeModel = modelId || (activeProvider === 'gemini' 
+      ? (aiConf.geminiModel || 'gemini-3.8-flash') 
+      : (aiConf.bedrockModel || 'anthropic.claude-3-5-sonnet-20241022-v2:0'));
+
+    const errorRecords = recordsStore.filter(r => r._hasError);
+    if (errorRecords.length === 0) {
+      return res.json({
+        success: true,
+        summary: {
+          executiveSummary: 'No failed API requests or errors detected across the configured CloudTrail logs. All recorded operations succeeded with 0% error rate.',
+          topFailureCategories: [],
+          threatIndicators: [],
+          actionPlan: ['Continue regular monitoring and log ingestion.']
+        },
+        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0, costUSD: 0, latencyMs: 0 }
+      });
+    }
+
+    if (!statsCache) {
+      computeStats();
+    }
+    const stats = statsCache || {};
+
+    const summary = await summarizeErrorTrends({
+      errorEvents: errorRecords,
+      stats,
+      provider: activeProvider,
+      modelId: activeModel,
+      config: {
+        geminiApiKey: aiConf.geminiApiKey || process.env.GEMINI_API_KEY,
+        bedrockRegion: aiConf.bedrockRegion || process.env.AWS_REGION || 'us-east-1',
+        awsCredentials: (aiConf.awsAccessKeyId && aiConf.awsSecretAccessKey) ? {
+          accessKeyId: aiConf.awsAccessKeyId,
+          secretAccessKey: aiConf.awsSecretAccessKey
+        } : undefined
+      }
+    });
+
+    res.json(summary);
+  } catch (err) {
+    console.error('[AI Summary Error]:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to generate AI executive error summary' });
+  }
+});
+
+// Get AI usage metrics, cost breakdown, and transaction logs
+app.get('/api/ai/usage', authMiddleware, (req, res) => {
+  res.json(getUsageMetrics());
+});
+
+// Reset AI usage logs and counter
+app.delete('/api/ai/usage', authMiddleware, (req, res) => {
+  res.json(resetUsageMetrics());
 });
 
 // Serve frontend build in production
